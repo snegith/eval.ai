@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    container_name: eval-ai-backend
+    ports:
+      - "8000:8000"
+    environment:
+      # Add any backend environment variables here, e.g.,
+      # - OPENAI_API_KEY=your_key_here
+      - ENVIRONMENT=production
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+    container_name: eval-ai-frontend
+    ports:
+      - "80:80"
+    environment:
+      # If your frontend needs env variables during build time, you can map them here or in .env
+      - VITE_API_URL=/api
+    depends_on:
+      - backend
+    restart: unless-stopped

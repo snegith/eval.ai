@@ -1,0 +1,16 @@
+CONFIG = {
+    "eye_threshold_x": 0.025,
+    "eye_threshold_y": 0.035,
+    "eye_smoothing_window": 5,
+    "posture_torso_angle_threshold_deg": 15,
+    "posture_shoulder_tilt_threshold": 0.15,
+    "posture_visibility_threshold": 0.2,
+    "animation_window_size": 30,
+    "confidence_eye_weight": 0.6,
+    "confidence_posture_weight": 0.4,
+    "confidence_damping": 0.9,
+    "confidence_cap": 95.0,
+    "nervousness_consistency_weight": 0.6,
+    "nervousness_stability_weight": 0.4,
+    "sessions_base_dir": "data/sessions",
+}

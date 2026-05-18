@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# MediaPipe temp files
+.tmp_mediapipe_*/
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment & Secrets
+.env
+*.env.local
+
+# Data & Storage (large files)
+data/
+storage/
+
+# Installers
+*.exe
+
+# Logs
+*.log

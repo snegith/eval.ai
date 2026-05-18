@@ -1,0 +1,17 @@
+streamlit
+plotly
+fastapi
+uvicorn
+python-multipart
+numpy<2
+scipy
+opencv-python
+protobuf<5
+mediapipe==0.10.14
+moviepy
+streamlit-webrtc
+av
+openai
+openai-whisper
+pypdf
+google-genai

@@ -1,0 +1,8 @@
+frontend
+cd "C:\Users\My PC\Desktop\mini projects\AI_INT_EVAL\frontend"
+npm run dev
+
+Backend 
+cd "C:\Users\My PC\Desktop\mini projects\AI_INT_EVAL"
+.venv\Scripts\activate
+uvicorn api.main:app --reload

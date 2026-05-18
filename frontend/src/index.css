@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #111118;
+  --bg-tertiary: #1a1a24;
+  --bg-glass: rgba(255, 255, 255, 0.03);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-active: rgba(99, 102, 241, 0.4);
+  --accent-primary: #6366f1;
+  --accent-secondary: #8b5cf6;
+  --accent-glow: rgba(99, 102, 241, 0.15);
+  --text-primary: #f1f0f5;
+  --text-secondary: #8b8a9b;
+  --text-muted: #4a4a5a;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #3b82f6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top, rgba(99, 102, 241, 0.14), transparent 32%),
+    linear-gradient(180deg, rgba(139, 92, 246, 0.07), transparent 25%),
+    var(--bg-primary);
+  color: var(--text-primary);
+  font-family: "Inter", sans-serif;
+  line-height: 1.7;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(99, 102, 241, 0.3);
+}
+
+@layer components {
+  .surface-card {
+    @apply rounded-2xl border shadow-card;
+    background: var(--bg-secondary);
+    border-color: var(--border-subtle);
+  }
+
+  .surface-elevated {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01)), var(--bg-secondary);
+  }
+
+  .glass-panel {
+    @apply rounded-2xl border;
+    background: var(--bg-glass);
+    border-color: var(--border-subtle);
+    backdrop-filter: blur(20px);
+  }
+
+  .premium-button {
+    @apply inline-flex items-center justify-center rounded-xl border px-4 py-3 text-sm font-medium transition-all duration-300 ease-premium;
+    border-color: transparent;
+  }
+
+  .premium-button:hover {
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden rounded-xl;
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+    animation: shimmer 1.4s infinite;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.dot-wave span {
+  animation: pulse-dot 0.9s infinite;
+}
+
+.dot-wave span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.dot-wave span:nth-child(3) {
+  animation-delay: 0.3s;
+}
