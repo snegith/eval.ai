@@ -155,7 +155,7 @@ def run_metrics_for_session(session_id: str) -> Dict[str, Any]:
     save_json(session_id, "animation_results.json", animation_result)
 
     # Derived metrics (explainable, mathematical; not emotion classification)
-    if any("error" in (res or {}) for res in [eye_contact_result, posture_result, animation_result]):
+    if any(isinstance(res, dict) and res.get("error") for res in [eye_contact_result, posture_result, animation_result]):
         derived_result: Dict[str, Any] = {
             "error": "Derived metrics require valid eye contact, posture, and animation results.",
         }

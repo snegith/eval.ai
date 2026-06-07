@@ -9,8 +9,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      # Add any backend environment variables here, e.g.,
-      # - OPENAI_API_KEY=your_key_here
+      # Required for LLM feedback, resume review, and question generation:
+      # - GEMINI_API_KEY=your_key_here
       - ENVIRONMENT=production
     restart: unless-stopped
 
@@ -18,12 +18,12 @@ services:
     build:
       context: .
       dockerfile: frontend.Dockerfile
+      args:
+        # Same-origin /api/* calls are proxied to the backend by NGINX
+        VITE_API_BASE_URL: ""
     container_name: eval-ai-frontend
     ports:
       - "80:80"
-    environment:
-      # If your frontend needs env variables during build time, you can map them here or in .env
-      - VITE_API_URL=/api
     depends_on:
       - backend
     restart: unless-stopped

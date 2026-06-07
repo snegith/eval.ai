@@ -1,7 +1,7 @@
 import re
 
 
-FILLERS = ["um", "uh", "like", "you know", "so", "actually"]
+FILLERS = ["um", "uh", "like", "you know"]
 
 
 def count_fillers(transcript):

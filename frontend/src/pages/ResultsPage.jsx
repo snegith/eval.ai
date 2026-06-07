@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { ArrowLeft, Camera, Eye, ScanFace, Sparkles, UserRound } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import PerformanceRadar from "../components/charts/PerformanceRadar";
 import Accordion from "../components/ui/Accordion";
@@ -76,7 +76,7 @@ function QuestionCards({ questions }) {
         <Card key={`${item.question}-${index}`} className="p-5">
           <div className="mb-3 flex items-center justify-between gap-3">
             <span className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-tertiary)] px-3 py-1 text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">
-              {item.category.replace("_", " ")}
+              {(item.category ?? "question").replace("_", " ")}
             </span>
             <span className="font-mono text-xs text-[var(--text-muted)]">Q{index + 1}</span>
           </div>
@@ -91,13 +91,56 @@ function QuestionCards({ questions }) {
 export default function ResultsPage() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
-  const { getSessionById, loading } = useSessionStore();
-  const session = getSessionById(sessionId);
+  const { getSessionById, fetchSessionById, loading, mode } = useSessionStore();
+  const cachedSession = getSessionById(sessionId);
+  const [session, setSession] = useState(cachedSession);
+  const [fetching, setFetching] = useState(false);
+  const [fetchError, setFetchError] = useState("");
   const [openSections, setOpenSections] = useState({
     eyeContact: true,
     posture: false,
     animation: false,
   });
+
+  useEffect(() => {
+    if (cachedSession) {
+      setSession(cachedSession);
+      setFetchError("");
+      return;
+    }
+
+    if (!sessionId || loading || mode !== "api") {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadSession() {
+      setFetching(true);
+      setFetchError("");
+      try {
+        const loadedSession = await fetchSessionById(sessionId);
+        if (!cancelled) {
+          setSession(loadedSession);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setSession(null);
+          setFetchError(error.message);
+        }
+      } finally {
+        if (!cancelled) {
+          setFetching(false);
+        }
+      }
+    }
+
+    loadSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cachedSession, fetchSessionById, loading, mode, sessionId]);
 
   const starCards = useMemo(() => {
     if (!session?.feedback.star?.applicable) return [];
@@ -109,11 +152,24 @@ export default function ResultsPage() {
     ];
   }, [session]);
 
-  if (!session && !loading) {
+  if ((fetching || loading) && !session) {
+    return (
+      <div className="space-y-8">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-72 w-full" />
+      </div>
+    );
+  }
+
+  if (!session) {
     return (
       <EmptyState
         title="Session not found"
-        description="The requested results could not be loaded. Return to sessions and choose another analysis run."
+        description={
+          fetchError ||
+          "The requested results could not be loaded. Return to sessions and choose another analysis run."
+        }
       />
     );
   }

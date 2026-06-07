@@ -82,10 +82,11 @@ export function normalizeSessionBundle(bundle) {
   const eyeScore = round(eye.eye_contact_score ?? eye.eye_contact_percentage ?? 0);
   const postureScore = round(posture.posture_score ?? posture.posture_percentage ?? 0);
   const animationScore = round(animation.expressiveness_score ?? 0);
-  const overallScore = round(
-    feedback.overall_score ??
-      (eyeScore && postureScore && animationScore ? (eyeScore + postureScore + animationScore) / 3 : 0),
-  );
+  const metricScores = [eyeScore, postureScore, animationScore].filter((score) => Number.isFinite(Number(score)));
+  const fallbackOverall = metricScores.length
+    ? round(metricScores.reduce((sum, score) => sum + Number(score), 0) / metricScores.length)
+    : 0;
+  const overallScore = round(feedback.overall_score ?? fallbackOverall);
 
   const confidence = round(derived.confidence_score ?? 0);
   const nervousness = round(derived.nervousness_score ?? 0);

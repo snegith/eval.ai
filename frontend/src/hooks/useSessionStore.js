@@ -9,6 +9,19 @@ function sortSessions(items) {
   return [...items].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
+async function loadSessionBundles(summaries) {
+  const results = await Promise.allSettled(
+    summaries.map((session) => getSessionResults(session.session_id)),
+  );
+
+  const bundles = results
+    .filter((result) => result.status === "fulfilled")
+    .map((result) => result.value);
+
+  const failedCount = results.length - bundles.length;
+  return { bundles, failedCount };
+}
+
 export function SessionStoreProvider({ children }) {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,10 +37,13 @@ export function SessionStoreProvider({ children }) {
 
       try {
         const summaries = await listSessions();
-        const bundles = await Promise.all(summaries.map((session) => getSessionResults(session.session_id)));
+        const { bundles, failedCount } = await loadSessionBundles(summaries);
         const normalizedSessions = sortSessions(bundles.map(normalizeSessionBundle));
         if (cancelled) return;
         setMode("api");
+        if (failedCount > 0) {
+          setError(`${failedCount} session(s) could not be loaded and were skipped.`);
+        }
         startTransition(() => {
           setSessions(normalizedSessions);
         });
@@ -72,14 +88,35 @@ export function SessionStoreProvider({ children }) {
       setLoading(true);
       try {
         const summaries = await listSessions();
-        const bundles = await Promise.all(summaries.map((session) => getSessionResults(session.session_id)));
+        const { bundles, failedCount } = await loadSessionBundles(summaries);
         setSessions(sortSessions(bundles.map(normalizeSessionBundle)));
-        setError("");
+        setError(
+          failedCount > 0 ? `${failedCount} session(s) could not be loaded and were skipped.` : "",
+        );
       } catch (refreshError) {
         setError(refreshError.message);
       } finally {
         setLoading(false);
       }
+    };
+
+    const fetchSessionById = async (sessionId) => {
+      if (!sessionId) return null;
+
+      const cached = sessions.find((session) => session.id === sessionId);
+      if (cached) return cached;
+
+      if (mode !== "api") {
+        return loadSessions().find((session) => session.id === sessionId) ?? null;
+      }
+
+      const bundle = await getSessionResults(sessionId);
+      const normalizedSession = normalizeSessionBundle(bundle);
+      setSessions((prev) => {
+        const withoutCurrent = prev.filter((session) => session.id !== sessionId);
+        return sortSessions([normalizedSession, ...withoutCurrent]);
+      });
+      return normalizedSession;
     };
 
     const createAndProcessSession = async (file, options = {}) => {
@@ -101,6 +138,7 @@ export function SessionStoreProvider({ children }) {
       mode,
       createAndProcessSession,
       refreshSessions,
+      fetchSessionById,
       getSessionById: (sessionId) => sessions.find((session) => session.id === sessionId) ?? null,
       stats: {
         totalSessions: sessions.length,

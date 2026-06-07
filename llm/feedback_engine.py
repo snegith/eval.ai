@@ -1,3 +1,4 @@
+import concurrent.futures
 import json
 import os
 import time
@@ -140,15 +141,23 @@ def generate_feedback(
     last_error: Optional[Exception] = None
     for attempt in range(max_retries):
         try:
-            response = client.models.generate_content(
-                model=model,
-                contents=prompt,
-                config={
-                    "temperature": temperature,
-                    "max_output_tokens": 2000,
-                    "response_mime_type": "application/json",
-                },
-            )
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(
+                    client.models.generate_content,
+                    model=model,
+                    contents=prompt,
+                    config={
+                        "temperature": temperature,
+                        "max_output_tokens": 2000,
+                        "response_mime_type": "application/json",
+                    },
+                )
+                try:
+                    response = future.result(timeout=timeout)
+                except concurrent.futures.TimeoutError as exc:
+                    raise FeedbackGenerationError(
+                        f"Gemini request timed out after {timeout} seconds"
+                    ) from exc
 
             content = (response.text or "").strip()
             if not content:

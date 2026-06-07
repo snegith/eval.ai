@@ -67,7 +67,7 @@ function QuestionsGrid({ questions }) {
         <Card key={`${item.question}-${index}`} className="p-5">
           <div className="mb-3 flex items-center justify-between gap-3">
             <span className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-tertiary)] px-3 py-1 text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">
-              {item.category.replace("_", " ")}
+              {(item.category ?? "question").replace("_", " ")}
             </span>
             <span className="font-mono text-xs text-[var(--text-muted)]">Q{index + 1}</span>
           </div>

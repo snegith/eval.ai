@@ -30,11 +30,12 @@ From the project root:\n
 streamlit run ui/upload_ui.py
 ```\n
 Then repeat with the other files above.\n
-### OpenAI key (for LLM feedback)
+### Gemini API key (for LLM feedback, resume review, and question generation)
 Set your key before running **Generate Feedback**:\n
 ```bash
-$env:OPENAI_API_KEY="YOUR_KEY_HERE"
+$env:GEMINI_API_KEY="YOUR_KEY_HERE"
 ```\n
+`GOOGLE_API_KEY` is also accepted by the Gemini SDK.\n
 """
 )
 

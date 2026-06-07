@@ -82,6 +82,9 @@ AI_INT_EVAL/
 - Python 3.11+
 - Node.js 18+
 - ffmpeg (for audio extraction)
+- A Google Gemini API key (`GEMINI_API_KEY` or `GOOGLE_API_KEY`) for LLM feedback, resume review, and question generation
+
+**MediaPipe compatibility:** install dependencies inside a fresh Python 3.11 virtual environment. The repo pins `mediapipe==0.10.14` and `protobuf<5`; using a global Python install or newer protobuf will break landmark extraction.
 
 ### Local Development
 
@@ -90,6 +93,7 @@ AI_INT_EVAL/
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
+$env:GEMINI_API_KEY="YOUR_KEY_HERE"
 uvicorn api.main:app --reload
 ```
 
@@ -107,8 +111,10 @@ docker-compose up --build -d
 ```
 
 This spins up:
-- **Frontend** on port `80` (NGINX serving the React build)
+- **Frontend** on port `80` (NGINX serving the React build and proxying `/api/*` to the backend)
 - **Backend** on port `8000` (FastAPI with Uvicorn)
+
+The frontend Docker build sets `VITE_API_BASE_URL=""` so the browser calls same-origin `/api/...` routes through NGINX instead of `127.0.0.1:8000`.
 
 ---
 

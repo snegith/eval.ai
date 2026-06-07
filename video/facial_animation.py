@@ -75,6 +75,10 @@ def analyze_facial_animation(
     frames = data.get("frames", [])
     if not frames:
         return {"error": "No frames found"}
+
+    fps = float(data.get("fps") or 30.0)
+    if fps <= 0:
+        fps = 30.0
     
     # Raw feature arrays
     mouth_openness = []
@@ -169,7 +173,8 @@ def analyze_facial_animation(
     
     # 4. Expression dynamics
     expression_peaks = len(peaks)  # Number of expressive moments
-    peak_frequency = expression_peaks / (len(animation_smooth) / 30) if len(animation_smooth) > 0 else 0
+    duration_sec = len(animation_smooth) / fps if len(animation_smooth) > 0 else 0.0
+    peak_frequency = expression_peaks / duration_sec if duration_sec > 0 else 0.0
     
     # 5. Temporal stability
     stability_score = 100 - (np.std(animation_smooth) * 100)
@@ -204,6 +209,7 @@ def analyze_facial_animation(
         },
         "expression_dynamics": {
             "peak_count": int(expression_peaks),
+            "fps_used": round(fps, 2),
             "peak_frequency_per_sec": round(peak_frequency, 2),
             "animation_range": {
                 "min": round(float(np.min(animation_intensity)) * 100, 2),

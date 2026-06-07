@@ -5,15 +5,31 @@ import mediapipe as mp
 from google.protobuf import __version__ as PROTOBUF_VERSION
 
 
-def normalize_frame(frame):
+def _pick_frame_rotation(frame, face_mesh):
     """
-    Fix portrait videos recorded with rotation metadata.
-    OpenCV ignores metadata, so we rotate manually if needed.
+    Choose the rotation that yields a FaceMesh detection on the probe frame.
+    Falls back to no rotation when no orientation produces a face.
     """
-    h, w = frame.shape[:2]
-    if h > w:
-        frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
-    return frame
+    candidates = [
+        (None, frame),
+        (cv2.ROTATE_90_CLOCKWISE, cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)),
+        (cv2.ROTATE_90_COUNTERCLOCKWISE, cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)),
+        (cv2.ROTATE_180, cv2.rotate(frame, cv2.ROTATE_180)),
+    ]
+
+    for rotation, candidate in candidates:
+        rgb = cv2.cvtColor(candidate, cv2.COLOR_BGR2RGB)
+        if face_mesh.process(rgb).multi_face_landmarks:
+            return rotation
+
+    return None
+
+
+def normalize_frame(frame, rotation=None):
+    """Apply a previously detected rotation to a video frame."""
+    if rotation is None:
+        return frame
+    return cv2.rotate(frame, rotation)
 
 
 def _serialize_landmarks(landmarks, include_visibility=False):
@@ -61,12 +77,18 @@ def extract_landmarks(video_path, output_path):
         model_complexity=1,
         smooth_landmarks=True,
     ) as pose:
+        frame_rotation = None
+        ret, probe_frame = cap.read()
+        if ret:
+            frame_rotation = _pick_frame_rotation(probe_frame, face_mesh)
+            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
 
-            frame = normalize_frame(frame)
+            frame = normalize_frame(frame, frame_rotation)
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             face_result = face_mesh.process(rgb)
             pose_result = pose.process(rgb)

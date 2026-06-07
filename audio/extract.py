@@ -1,4 +1,7 @@
-from moviepy.editor import VideoFileClip
+try:
+    from moviepy import VideoFileClip
+except ImportError:  # MoviePy 1.x
+    from moviepy.editor import VideoFileClip
 
 def extract_audio(video_path, audio_path="data/temp_audio.wav"):
     """

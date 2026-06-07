@@ -205,8 +205,20 @@ def run_landmarks_for_session(session_id: str) -> Dict[str, Any]:
     session_path = Path(get_session_path(session_id))
     output_path = session_path / "landmarks.json"
 
-    extract_landmarks(video_path, str(output_path))
-    report = validate_landmarks(str(output_path))
+    try:
+        extract_landmarks(video_path, str(output_path))
+    except Exception as exc:
+        error = f"Landmark extraction failed: {exc}"
+        update_metadata(session_id, {"status": "landmarks_failed", "last_error": error})
+        return {"error": error}
+
+    try:
+        report = validate_landmarks(str(output_path))
+    except Exception as exc:
+        error = f"Landmark validation failed: {exc}"
+        update_metadata(session_id, {"status": "landmarks_failed", "last_error": error})
+        return {"error": error}
+
     save_json(session_id, "landmark_validation.json", report)
     update_artifacts(session_id, landmarks=True)
     update_metadata(
@@ -256,9 +268,32 @@ def run_full_processing_for_session(
             }
 
     results["landmarks"] = run_landmarks_for_session(session_id)
+    if isinstance(results["landmarks"], dict) and results["landmarks"].get("error"):
+        results["summary"] = build_session_summary(session_id)
+        results["bundle"] = build_session_bundle(session_id)
+        return results
+
     results["metrics"] = run_metrics_stage(session_id)
     if generate_feedback:
-        results["feedback"] = run_feedback_stage(session_id)
+        if results["metrics"].get("status") == "error":
+            skipped_feedback = {
+                "error": "Feedback skipped because behavioral metrics analysis failed.",
+            }
+            save_json(session_id, "feedback.json", skipped_feedback)
+            update_metadata(
+                session_id,
+                {
+                    "status": "feedback_failed",
+                    "last_error": skipped_feedback["error"],
+                },
+            )
+            update_artifacts(session_id, feedback=False)
+            results["feedback"] = {
+                "status": "error",
+                "feedback": skipped_feedback,
+            }
+        else:
+            results["feedback"] = run_feedback_stage(session_id)
 
     results["summary"] = build_session_summary(session_id)
     results["bundle"] = build_session_bundle(session_id)

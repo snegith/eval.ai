@@ -15,14 +15,59 @@ async function request(path, options = {}) {
   return response.json();
 }
 
+function collectStageErrors(value, messages = []) {
+  if (!value || typeof value !== "object") {
+    return messages;
+  }
+
+  if (typeof value.error === "string" && value.error.trim()) {
+    messages.push(value.error);
+  }
+
+  for (const nested of Object.values(value)) {
+    if (nested && typeof nested === "object") {
+      collectStageErrors(nested, messages);
+    }
+  }
+
+  return messages;
+}
+
+function extractStageError(payload) {
+  const data = payload?.data;
+  if (!data) {
+    return null;
+  }
+
+  const directCandidates = [
+    data.error,
+    data.summary?.last_error,
+    data.landmarks?.error,
+    data.audio?.error,
+    data.metrics?.error,
+    data.feedback?.error,
+    data.feedback?.feedback?.error,
+    data.resume?.error,
+    data.questions?.error,
+  ];
+
+  for (const message of directCandidates) {
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+  }
+
+  const nestedMessages = collectStageErrors(data.metrics?.metrics ?? data.metrics, []);
+  if (nestedMessages.length) {
+    return nestedMessages[0];
+  }
+
+  return null;
+}
+
 function ensureStageSuccess(payload) {
   if (payload?.status && payload.status !== "ok") {
-    const stageMessage =
-      payload.data?.error ??
-      payload.data?.resume_review?.error ??
-      payload.data?.feedback?.error ??
-      "Pipeline stage failed.";
-    throw new Error(stageMessage);
+    throw new Error(extractStageError(payload) ?? "Pipeline stage failed.");
   }
   return payload;
 }
