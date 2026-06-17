@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { ArrowLeft, Camera, Eye, ScanFace, Sparkles, UserRound } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import PerformanceRadar from "../components/charts/PerformanceRadar";
 import Accordion from "../components/ui/Accordion";
 import Button from "../components/ui/Button";
@@ -90,6 +90,7 @@ function QuestionCards({ questions }) {
 
 export default function ResultsPage() {
   const { sessionId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { getSessionById, fetchSessionById, loading, mode } = useSessionStore();
   const cachedSession = getSessionById(sessionId);
@@ -234,6 +235,18 @@ ${session.feedback.summary}
           )}
         </div>
       </div>
+
+      {location.state?.partialWarning ? (
+        <Card className="flex items-start gap-4 border-[rgba(245,158,11,0.28)] bg-[rgba(245,158,11,0.08)] p-5">
+          <div className="rounded-2xl bg-[rgba(245,158,11,0.15)] p-3 text-[var(--warning)]">
+            <Sparkles size={18} />
+          </div>
+          <div>
+            <p className="font-semibold tracking-tight text-[var(--text-primary)]">Partial analysis completed</p>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">{location.state.partialWarning}</p>
+          </div>
+        </Card>
+      ) : null}
 
       {session?.framingQuality?.hasWarnings ? (
         <Card className="flex items-start gap-4 border-[rgba(245,158,11,0.28)] bg-[rgba(245,158,11,0.08)] p-5">

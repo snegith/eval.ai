@@ -72,6 +72,26 @@ function ensureStageSuccess(payload) {
   return payload;
 }
 
+function ensureProcessSuccess(payload) {
+  if (!payload?.status || payload.status === "ok" || payload.status === "partial") {
+    return payload;
+  }
+  throw new Error(extractStageError(payload) ?? "Pipeline stage failed.");
+}
+
+export function extractProcessWarning(payload) {
+  if (payload?.status !== "partial") {
+    return "";
+  }
+
+  const summaryError = payload?.data?.summary?.last_error;
+  if (typeof summaryError === "string" && summaryError.trim()) {
+    return summaryError;
+  }
+
+  return extractStageError(payload) ?? "Some pipeline stages completed with warnings.";
+}
+
 export function listSessions() {
   return request("/api/sessions");
 }
@@ -126,7 +146,7 @@ export function processSession(sessionId, options = {}) {
       parse_resume: options.parseResume ?? false,
       generate_questions: options.generateQuestions ?? false,
     }),
-  }).then(ensureStageSuccess);
+  }).then(ensureProcessSuccess);
 }
 
 export function processUpload(file, options = {}) {
@@ -145,7 +165,7 @@ export function processUpload(file, options = {}) {
   return request("/api/sessions/process-upload", {
     method: "POST",
     body: formData,
-  }).then(ensureStageSuccess);
+  }).then(ensureProcessSuccess);
 }
 
 export { API_BASE_URL };

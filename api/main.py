@@ -58,6 +58,36 @@ def _stage_status_from_summary(summary: dict | None) -> str:
     return "ok"
 
 
+def _has_usable_metrics(result: dict) -> bool:
+    metrics = result.get("metrics") or {}
+    metric_results = metrics.get("metrics") if isinstance(metrics.get("metrics"), dict) else metrics
+    if not isinstance(metric_results, dict):
+        return False
+
+    for key in ("eye_contact", "posture", "animation"):
+        payload = metric_results.get(key) or {}
+        if isinstance(payload, dict) and not payload.get("error"):
+            return True
+    return False
+
+
+def _process_stage_status(result: dict | None) -> str:
+    """Return ok, partial, or error for full-session processing."""
+    result = result or {}
+    landmarks = result.get("landmarks") or {}
+    if isinstance(landmarks, dict) and landmarks.get("error"):
+        return "error"
+
+    summary = result.get("summary") or {}
+    summary_status = str(summary.get("status", "ok"))
+    summary_failed = "failed" in summary_status or summary_status == "error"
+
+    if _has_usable_metrics(result):
+        return "partial" if summary_failed else "ok"
+
+    return "error" if summary_failed else "ok"
+
+
 @app.get("/health", response_model=HealthResponse)
 def health_check() -> HealthResponse:
     return HealthResponse()
@@ -206,7 +236,7 @@ def run_full_process(session_id: str, request: FullProcessRequest) -> StageRespo
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
-    return StageResponse(status=_stage_status_from_summary(result.get("summary")), session_id=session_id, data=result)
+    return StageResponse(status=_process_stage_status(result), session_id=session_id, data=result)
 
 
 @app.post("/api/sessions/process-upload", response_model=StageResponse)
@@ -255,4 +285,4 @@ async def process_upload(
     finally:
         Path(temp_path).unlink(missing_ok=True)
 
-    return StageResponse(status=_stage_status_from_summary(result.get("summary")), session_id=session_id, data=result)
+    return StageResponse(status=_process_stage_status(result), session_id=session_id, data=result)

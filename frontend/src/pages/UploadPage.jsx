@@ -15,6 +15,7 @@ import {
   processSession,
   uploadResume,
   uploadVideo,
+  extractProcessWarning,
 } from "../lib/api";
 import { normalizeSessionBundle } from "../lib/sessionNormalizer";
 
@@ -173,11 +174,15 @@ export default function UploadPage() {
       const sessionId = created.session_id;
       setDraftSessionId(sessionId);
       await uploadVideo(sessionId, file);
-      await processSession(sessionId, { parseResume: false, generateQuestions: false });
+      const processResponse = await processSession(sessionId, { parseResume: false, generateQuestions: false });
+      const partialWarning = extractProcessWarning(processResponse);
       window.clearInterval(intervalId);
       setCurrentStep(stepTemplate.length);
       await refreshSessions();
-      window.setTimeout(() => navigate(`/results/${sessionId}`), 450);
+      window.setTimeout(
+        () => navigate(`/results/${sessionId}`, partialWarning ? { state: { partialWarning } } : undefined),
+        450,
+      );
     } catch (processingError) {
       window.clearInterval(intervalId);
       setCurrentStep(-1);
