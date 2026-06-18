@@ -49,6 +49,12 @@ def parse_json_response(content: str) -> Dict[str, Any]:
         except json.JSONDecodeError:
             pass
 
+        for suffix in ('"}]}', '"]}', '"}', '"]', "}", "]"):
+            try:
+                return json.loads(content + suffix)
+            except json.JSONDecodeError:
+                continue
+
         raise FeedbackGenerationError(
             f"Failed to parse JSON response: {exc}\nRaw response: {content[:200]}..."
         ) from exc

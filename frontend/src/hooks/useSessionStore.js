@@ -9,6 +9,17 @@ function sortSessions(items) {
   return [...items].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
+function isScoredSession(session) {
+  return Boolean(
+    session.overallScore > 0 ||
+    session.artifacts?.landmarks ||
+    session.artifacts?.feedback ||
+    session.status === "feedback_completed" ||
+    session.status === "metrics_completed" ||
+    session.status === "metrics_failed",
+  );
+}
+
 async function loadSessionBundles(summaries) {
   const results = await Promise.allSettled(
     summaries.map((session) => getSessionResults(session.session_id)),
@@ -142,11 +153,17 @@ export function SessionStoreProvider({ children }) {
       getSessionById: (sessionId) => sessions.find((session) => session.id === sessionId) ?? null,
       stats: {
         totalSessions: sessions.length,
-        averageScore: sessions.length
-          ? Math.round(sessions.reduce((sum, session) => sum + session.overallScore, 0) / sessions.length)
-          : 0,
-        bestScore: sessions.length ? Math.max(...sessions.map((session) => session.overallScore)) : 0,
-        recentSession: sessions[0] ?? null,
+        averageScore: (() => {
+          const scoredSessions = sessions.filter(isScoredSession);
+          return scoredSessions.length
+            ? Math.round(scoredSessions.reduce((sum, session) => sum + session.overallScore, 0) / scoredSessions.length)
+            : 0;
+        })(),
+        bestScore: (() => {
+          const scoredSessions = sessions.filter(isScoredSession);
+          return scoredSessions.length ? Math.max(...scoredSessions.map((session) => session.overallScore)) : 0;
+        })(),
+        recentSession: sessions.find(isScoredSession) ?? sessions[0] ?? null,
       },
     };
   }, [error, loading, mode, sessions]);

@@ -1,6 +1,11 @@
 """Shared pytest helpers for optional integration tests."""
 
 import os
+import shutil
+import tempfile
+from pathlib import Path
+
+import pytest
 
 
 def mediapipe_runtime_ready() -> bool:
@@ -27,3 +32,21 @@ def default_test_video_path() -> str:
         "LANDMARKS_TEST_VIDEO",
         "data/sessions/session_763c54f7/video.mp4",
     )
+
+
+@pytest.fixture
+def isolated_data_dir(monkeypatch):
+    """Run tests against a temp data directory so existing sessions are untouched."""
+    temp_root = Path(tempfile.mkdtemp(prefix="eval_ai_test_"))
+    sessions_dir = temp_root / "sessions"
+    sessions_dir.mkdir(parents=True)
+
+    import storage.session_store as store
+
+    original = store.BASE_DIR
+    monkeypatch.setattr(store, "BASE_DIR", str(sessions_dir))
+    try:
+        yield sessions_dir
+    finally:
+        monkeypatch.setattr(store, "BASE_DIR", original)
+        shutil.rmtree(temp_root, ignore_errors=True)

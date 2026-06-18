@@ -1,9 +1,6 @@
 """End-to-end API smoke test: session lifecycle through full processing."""
 
 import os
-import shutil
-import tempfile
-import uuid
 from pathlib import Path
 
 import pytest
@@ -19,24 +16,6 @@ HAS_GEMINI_KEY = bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE
 @pytest.fixture
 def client():
     return TestClient(app)
-
-
-@pytest.fixture
-def isolated_data_dir(monkeypatch):
-    """Run smoke test against a temp data directory so existing sessions are untouched."""
-    temp_root = Path(tempfile.mkdtemp(prefix="e2e_smoke_"))
-    sessions_dir = temp_root / "sessions"
-    sessions_dir.mkdir(parents=True)
-
-    import storage.session_store as store
-
-    original = store.BASE_DIR
-    monkeypatch.setattr(store, "BASE_DIR", str(sessions_dir))
-    try:
-        yield sessions_dir
-    finally:
-        monkeypatch.setattr(store, "BASE_DIR", original)
-        shutil.rmtree(temp_root, ignore_errors=True)
 
 
 def test_health_endpoint(client):
@@ -58,6 +37,12 @@ def test_session_crud_and_list(client, isolated_data_dir):
 
     list_resp = client.get("/api/sessions")
     assert list_resp.status_code == 200
+    ids = [item["session_id"] for item in list_resp.json()]
+    assert session_id not in ids
+
+    session_path = isolated_data_dir / session_id
+    (session_path / "landmarks.json").write_text('{"fps": 30, "total_frames": 1, "frames": []}', encoding="utf-8")
+    list_resp = client.get("/api/sessions")
     ids = [item["session_id"] for item in list_resp.json()]
     assert session_id in ids
 

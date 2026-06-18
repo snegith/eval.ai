@@ -11,7 +11,9 @@ from llm.question_generator import QuestionGenerationError, generate_questions_f
 from storage.session_store import (
     create_session,
     get_session_path,
+    get_video_duration_seconds,
     load_json,
+    reconcile_session_metadata,
     resolve_resume_path,
     resolve_video_path,
     save_json,
@@ -45,7 +47,7 @@ def ensure_session(session_id: str) -> None:
 
 
 def build_session_summary(session_id: str) -> Dict[str, Any]:
-    metadata = load_json(session_id, "metadata.json")
+    metadata = reconcile_session_metadata(session_id)
     feedback = _safe_load_artifact(session_id, "feedback")
     overall_score = None
     if isinstance(feedback, dict) and "overall_score" in feedback:
@@ -66,9 +68,10 @@ def build_session_summary(session_id: str) -> Dict[str, Any]:
 
 def build_session_bundle(session_id: str) -> Dict[str, Any]:
     ensure_session(session_id)
+    metadata = reconcile_session_metadata(session_id)
     bundle: Dict[str, Any] = {
         "session_id": session_id,
-        "metadata": load_json(session_id, "metadata.json"),
+        "metadata": metadata,
     }
     for key in ARTIFACT_FILENAMES:
         bundle[key] = _safe_load_artifact(session_id, key)
@@ -92,12 +95,14 @@ def save_uploaded_video(session_id: str, source_path: str, original_filename: st
         existing_video.unlink(missing_ok=True)
     shutil.copyfile(source_path, destination)
 
+    duration_seconds = get_video_duration_seconds(str(destination))
     update_artifacts(session_id, video=True)
     update_metadata(
         session_id,
         {
             "status": "video_uploaded",
             "video_filename": canonical_name,
+            "duration_seconds": duration_seconds,
             "last_error": "",
         },
     )
@@ -105,6 +110,7 @@ def save_uploaded_video(session_id: str, source_path: str, original_filename: st
     return {
         "video_filename": canonical_name,
         "video_path": str(destination),
+        "duration_seconds": duration_seconds,
     }
 
 
@@ -325,6 +331,23 @@ def _safe_load_artifact(session_id: str, artifact_key: str) -> Optional[Dict[str
     if not path.exists():
         return None
     try:
-        return load_json(session_id, filename)
+        payload = load_json(session_id, filename)
     except Exception:
         return {"error": f"Failed to load {filename}"}
+
+    if artifact_key == "resume_review" and isinstance(payload, dict) and payload.get("error"):
+        profile = _safe_load_artifact(session_id, "resume_profile")
+        resume_text = _safe_load_artifact(session_id, "resume_text")
+        if isinstance(profile, dict) and not profile.get("error"):
+            fallback = build_fallback_resume_review(
+                profile,
+                str((resume_text or {}).get("full_text", "")),
+            )
+            fallback["_metadata"] = {
+                **(fallback.get("_metadata") or {}),
+                "fallback_reason": payload.get("error"),
+                "recovered_from_stored_error": True,
+            }
+            return fallback
+
+    return payload
