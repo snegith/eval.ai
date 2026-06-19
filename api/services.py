@@ -47,7 +47,11 @@ def ensure_session(session_id: str) -> None:
 
 
 def build_session_summary(session_id: str) -> Dict[str, Any]:
-    metadata = reconcile_session_metadata(session_id)
+    # write=False: reading a session must never rewrite metadata.json. The dashboard
+    # polls every session in parallel, and write-on-read collided with the active
+    # processing pipeline writing the same file. Stage functions persist status
+    # explicitly, so a read-only reconcile is sufficient here.
+    metadata = reconcile_session_metadata(session_id, write=False)
     feedback = _safe_load_artifact(session_id, "feedback")
     overall_score = None
     if isinstance(feedback, dict) and "overall_score" in feedback:
@@ -68,7 +72,7 @@ def build_session_summary(session_id: str) -> Dict[str, Any]:
 
 def build_session_bundle(session_id: str) -> Dict[str, Any]:
     ensure_session(session_id)
-    metadata = reconcile_session_metadata(session_id)
+    metadata = reconcile_session_metadata(session_id, write=False)
     bundle: Dict[str, Any] = {
         "session_id": session_id,
         "metadata": metadata,
