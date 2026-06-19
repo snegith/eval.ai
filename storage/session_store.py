@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -306,14 +307,49 @@ def resolve_resume_path(session_id):
     return None
 
 def save_json(session_id, filename, data):
-    path = os.path.join(get_session_path(session_id), filename)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+    """Write JSON atomically so concurrent readers never observe a truncated file.
 
-def load_json(session_id, filename):
+    The previous implementation opened the destination in "w" mode, which
+    truncates the file before the new contents are written. Under the dashboard's
+    parallel polling this produced torn/empty reads and
+    `JSONDecodeError: Expecting value: line 1 column 1 (char 0)`. We now write to a
+    unique temp file in the same directory and atomically replace the target.
+    """
+    directory = get_session_path(session_id)
+    os.makedirs(directory, exist_ok=True)
+    path = os.path.join(directory, filename)
+    tmp_path = f"{path}.{os.getpid()}.{uuid.uuid4().hex}.tmp"
+    try:
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, path)
+    finally:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+
+def load_json(session_id, filename, *, retries: int = 5, retry_delay: float = 0.05):
+    """Load JSON, tolerating transient empty/partial reads from concurrent writers.
+
+    Atomic writes (see save_json) make torn reads extremely unlikely, but legacy
+    files written by the old non-atomic path may already be corrupted, and we still
+    retry briefly to absorb any remaining races instead of crashing the request.
+    """
     path = os.path.join(get_session_path(session_id), filename)
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    last_error = None
+    for attempt in range(max(1, retries)):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, ValueError) as exc:
+            last_error = exc
+            if attempt < retries - 1:
+                time.sleep(retry_delay)
+    raise last_error
 
 def update_metadata(session_id, updates):
     metadata = {}
